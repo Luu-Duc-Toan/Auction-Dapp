@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 contract SampleAsset is ERC721, Ownable {
     uint256 public nextTokenId;
 
-    constructor() ERC721("SampleProduct", "SP") Ownable(msg.sender) {}
+    constructor() ERC721("SampleAsset", "SP") Ownable(msg.sender) {}
 
     function mint(address to) external onlyOwner {
         _safeMint(to, nextTokenId);
