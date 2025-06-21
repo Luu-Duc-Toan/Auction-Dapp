@@ -8,23 +8,24 @@ import "forge-std/console.sol";
 
 //How to check whether the product is a ERC721 token? (valid product)
 //add lending function
+//return token for lastBidder after new Bidder bid successfully
 contract AuctionManagement is Ownable {
-    struct Product {
-        address productAddress;
-        uint256 productId;
+    struct Asset {
+        address assetAddress;
+        uint256 assetId;
     }
 
     address public auctionTokenAddress;
     uint256 public startTime;
     uint256 public duration;
     uint256 public elapsedTime;
-    uint256 public currentProductIndex;
+    uint256 public currentAssetIndex;
     uint256 public fairWarningTime;
     uint256 public lastBidTime;
-    Product[] pendingProducts;
-    Product[] verifiedProducts;
-    mapping(bytes32 => address) productOwners;
-    mapping(bytes32 => address) productSellers;
+    Asset[] pendingAssets;
+    Asset[] verifiedAssets;
+    mapping(bytes32 => address) owners;
+    mapping(bytes32 => address) sellers;
     mapping(bytes32 => uint256) prices;
 
     constructor(uint256 _startTime, uint256 _duration, uint256 _elapsedTime, uint256 _fairWarningTime)
@@ -41,7 +42,7 @@ contract AuctionManagement is Ownable {
     modifier inAuction() {
         require(block.timestamp >= startTime, "Auction has not started yet");
         require(block.timestamp < startTime + duration, "Auction has already ended");
-        require(currentProductIndex < verifiedProducts.length, "No products available for bidding");
+        require(currentAssetIndex < verifiedAssets.length, "No asset available for bidding");
         _;
     }
 
@@ -50,82 +51,60 @@ contract AuctionManagement is Ownable {
         _;
     }
 
-    modifier validProduct(address product) {
-        require(product != address(0), "Invalid product address");
+    modifier validAsset(address asset) {
+        require(asset != address(0), "Invalid asset address");
         _;
     }
 
-    function getProductHash(address productAddress, uint256 productId) internal pure returns (bytes32) {
-        return keccak256(abi.encodePacked(productAddress, productId));
+    function getAssetHash(address assetAddress, uint256 assetId) internal pure returns (bytes32) {
+        return keccak256(abi.encodePacked(assetAddress, assetId));
     }
 
-    function addProduct(address product, uint256 id, uint256 minPrice)
+    function addAsset(address asset, uint256 id, uint256 minPrice)
         external
         notInAuction
-        validProduct(product)
+        validAsset(asset)
         returns (bool)
     {
-        require(ERC721(product).ownerOf(id) == msg.sender, "Not the owner of the product");
-        require(ERC721(product).getApproved(id) == address(this), "Product not approved");
-        ERC721(product).transferFrom(msg.sender, address(this), id);
-        Product memory newProduct = Product({productAddress: product, productId: id});
-        pendingProducts.push(newProduct);
-        bytes32 productHash = getProductHash(product, id);
-        productSellers[productHash] = msg.sender;
-        prices[productHash] = minPrice - 1;
+        require(ERC721(asset).ownerOf(id) == msg.sender, "Not the owner of the asset");
+        require(ERC721(asset).getApproved(id) == address(this), "Asset not approved");
+        ERC721(asset).transferFrom(msg.sender, address(this), id);
+        Asset memory newAsset = Asset({assetAddress: asset, assetId: id});
+        pendingAssets.push(newAsset);
+        bytes32 assetHash = getAssetHash(asset, id);
+        sellers[assetHash] = msg.sender;
+        prices[assetHash] = minPrice - 1;
         return true;
     }
 
-    function removeProduct(address product, uint256 id) external notInAuction validProduct(product) returns (bool) {
-        bytes32 productHash = getProductHash(product, id);
-        require(productSellers[productHash] == msg.sender, "Not the seller of the product");
-        for (uint256 i = 0; i < pendingProducts.length; ++i) {
-            if (pendingProducts[i].productAddress != product || pendingProducts[i].productId != id) continue;
-            pendingProducts[i] = pendingProducts[pendingProducts.length - 1];
-            pendingProducts.pop();
-            delete productSellers[productHash];
-            delete prices[productHash];
+    function removeAsset(address asset, uint256 id) external notInAuction validAsset(asset) returns (bool) {
+        bytes32 assetHash = getAssetHash(asset, id);
+        require(sellers[assetHash] == msg.sender, "Not the seller of the asset");
+        for (uint256 i = 0; i < pendingAssets.length; ++i) {
+            if (pendingAssets[i].assetAddress != asset || pendingAssets[i].assetId != id) continue;
+            pendingAssets[i] = pendingAssets[pendingAssets.length - 1];
+            pendingAssets.pop();
+            delete sellers[assetHash];
+            delete prices[assetHash];
             return true;
         }
-        for (uint256 i = 0; i < verifiedProducts.length; ++i) {
-            if (verifiedProducts[i].productAddress != product || verifiedProducts[i].productId != id) continue;
-            verifiedProducts[i] = verifiedProducts[verifiedProducts.length - 1];
-            verifiedProducts.pop();
-            delete productSellers[productHash];
-            delete prices[productHash];
+        for (uint256 i = 0; i < verifiedAssets.length; ++i) {
+            if (verifiedAssets[i].assetAddress != asset || verifiedAssets[i].assetId != id) continue;
+            verifiedAssets[i] = verifiedAssets[verifiedAssets.length - 1];
+            verifiedAssets.pop();
+            delete sellers[assetHash];
+            delete prices[assetHash];
             return true;
         }
-        return false; //dont find the product (in which case?)
+        return false; //dont find the asset (in which case?)
     }
 
-    function getPendingProducts() external view notInAuction returns (Product[] memory) {
-        return pendingProducts;
-    }
-
-    function verifyProduct(uint256 index) external notInAuction onlyOwner returns (bool) {
-        require(index < pendingProducts.length, "Invalid product index");
-        verifiedProducts.push(pendingProducts[index]);
-        pendingProducts[index] = pendingProducts[pendingProducts.length - 1];
-        pendingProducts.pop();
+    function verifyAsset(uint256 index) external notInAuction onlyOwner returns (bool) {
+        require(index < pendingAssets.length, "Invalid asset index");
+        verifiedAssets.push(pendingAssets[index]);
+        pendingAssets[index] = pendingAssets[pendingAssets.length - 1];
+        pendingAssets.pop();
         return true;
-    }
-
-    function getVerifiedProducts() external view notInAuction returns (Product[] memory) {
-        return verifiedProducts;
-    }
-
-    function getProductPrice(address product, uint256 id) external view validProduct(product) returns (uint256) {
-        console.log("getProductPrice", product, id);
-        return prices[getProductHash(product, id)];
-    }
-
-    function getProductOwner(address product, uint256 id) external view validProduct(product) returns (address) {
-        console.log("getProductOwner", product, id);
-        return productOwners[getProductHash(product, id)];
-    }
-
-    function getProductSeller(address product, uint256 id) external view validProduct(product) returns (address) {
-        return productSellers[getProductHash(product, id)];
     }
 
     function beginAuction() external inAuction returns (bool) {
@@ -136,63 +115,91 @@ contract AuctionManagement is Ownable {
 
     function closeAuction() external notInAuction returns (bool) {
         require(lastBidTime >= startTime, "Auction has not started yet");
-        currentProductIndex = 0;
+        currentAssetIndex = 0;
         lastBidTime = 0;
         startTime += elapsedTime;
-        delete verifiedProducts;
+        delete pendingAssets;
+        delete verifiedAssets;
         return true;
     }
 
+    //return token for lastBidder
     function bid(uint256 amount) external inAuction returns (bool) {
-        bytes32 productHash = getProductHash(
-            verifiedProducts[currentProductIndex].productAddress, verifiedProducts[currentProductIndex].productId
-        );
-        require(amount > prices[productHash], "Bid amount must be greater than the current price");
+        bytes32 assetHash =
+            getAssetHash(verifiedAssets[currentAssetIndex].assetAddress, verifiedAssets[currentAssetIndex].assetId);
+        require(amount > prices[assetHash], "Bid amount must be greater than the current price");
         require(AuctionToken(auctionTokenAddress).balanceOf(msg.sender) >= amount, "Insufficient balance");
         require(AuctionToken(auctionTokenAddress).allowance(msg.sender, address(this)) >= amount, "Allowance too low");
         AuctionToken(auctionTokenAddress).transferFrom(msg.sender, address(this), amount);
-        prices[productHash] = amount;
-        productOwners[productHash] = msg.sender;
+        prices[assetHash] = amount;
+        owners[assetHash] = msg.sender;
         lastBidTime = block.timestamp;
         return true;
     }
 
     function gavel() external inAuction returns (bool) {
         require(block.timestamp - lastBidTime >= fairWarningTime, "Fair warning time has not elapsed since last bid");
-        require(currentProductIndex < verifiedProducts.length, "No products available for gaveling");
-        bytes32 productHash = getProductHash(
-            verifiedProducts[currentProductIndex].productAddress, verifiedProducts[currentProductIndex].productId
-        );
-        if (productOwners[productHash] == address(0)) {
-            prices[productHash] = 0;
+        require(currentAssetIndex < verifiedAssets.length, "No asset available for gaveling");
+        bytes32 assetHash =
+            getAssetHash(verifiedAssets[currentAssetIndex].assetAddress, verifiedAssets[currentAssetIndex].assetId);
+        if (owners[assetHash] == address(0)) {
+            prices[assetHash] = 0;
         }
-        currentProductIndex++;
+        currentAssetIndex++;
         lastBidTime = block.timestamp;
         return true;
     }
 
-    function bidderClaim(address product, uint256 id) external notInAuction validProduct(product) returns (bool) {
-        bytes32 productHash = getProductHash(product, id);
-        require(productOwners[productHash] == msg.sender, "Not the owner of the product");
-        ERC721(product).safeTransferFrom(address(this), msg.sender, id);
-        delete productOwners[productHash];
+    function bidderClaim(address asset, uint256 id) external notInAuction validAsset(asset) returns (bool) {
+        bytes32 assetHash = getAssetHash(asset, id);
+        require(owners[assetHash] == msg.sender, "Not the owner of the asset");
+        ERC721(asset).safeTransferFrom(address(this), msg.sender, id);
+        delete owners[assetHash];
         return true;
     }
 
-    function sellerClaim(address product, uint256 id) external notInAuction validProduct(product) returns (bool) {
-        bytes32 productHash = getProductHash(product, id);
-        require(productSellers[productHash] == msg.sender, "Not the owner of the product");
-        if (prices[productHash] != 0) {
-            AuctionToken(auctionTokenAddress).transfer(msg.sender, prices[productHash]);
+    function sellerClaim(address asset, uint256 id) external notInAuction validAsset(asset) returns (bool) {
+        bytes32 assetHash = getAssetHash(asset, id);
+        require(sellers[assetHash] == msg.sender, "Not the owner of the asset");
+        if (prices[assetHash] != 0) {
+            AuctionToken(auctionTokenAddress).transfer(msg.sender, prices[assetHash]);
         } else {
-            ERC721(product).safeTransferFrom(address(this), msg.sender, id);
+            ERC721(asset).safeTransferFrom(address(this), msg.sender, id);
         }
-        delete productSellers[productHash];
-        delete prices[productHash];
+        delete sellers[assetHash];
+        delete prices[assetHash];
         return true;
     }
 
-    function getCurrentProduct() external view inAuction returns (Product memory) {
-        return verifiedProducts[currentProductIndex];
+    function isNotInAuction() external view notInAuction returns (bool) {
+        return true;
+    }
+
+    function isInAuction() external view inAuction returns (bool) {
+        return true;
+    }
+
+    function getPendingAssets() external view notInAuction returns (Asset[] memory) {
+        return pendingAssets;
+    }
+
+    function getVerifiedAssets() external view notInAuction returns (Asset[] memory) {
+        return verifiedAssets;
+    }
+
+    function getCurrentAsset() external view inAuction returns (Asset memory) {
+        return verifiedAssets[currentAssetIndex];
+    }
+
+    function getAssetPrice(address asset, uint256 id) external view validAsset(asset) returns (uint256) {
+        return prices[getAssetHash(asset, id)];
+    }
+
+    function getAssetOwner(address asset, uint256 id) external view validAsset(asset) returns (address) {
+        return owners[getAssetHash(asset, id)];
+    }
+
+    function getAssetSeller(address asset, uint256 id) external view validAsset(asset) returns (address) {
+        return sellers[getAssetHash(asset, id)];
     }
 }

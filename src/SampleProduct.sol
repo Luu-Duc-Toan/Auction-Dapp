@@ -1,10 +1,10 @@
-// SPDX-Liciense-Identifier: UNLICENSED
+//SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 
-contract SampleProduct is ERC721, Ownable {
+contract SampleAsset is ERC721, Ownable {
     uint256 public nextTokenId;
 
     constructor() ERC721("SampleProduct", "SP") Ownable(msg.sender) {}
