@@ -3,12 +3,12 @@ pragma solidity ^0.8.13;
 
 import {Test, console} from "forge-std/Test.sol";
 import "../src/AuctionManagement.sol";
-import "../src/SampleProduct.sol";
+import "../src/SampleAsset.sol";
 import "../src/AuctionToken.sol";
 
 contract AuctionTest is Test {
     AuctionManagement public auctionManagement;
-    SampleProduct public product;
+    SampleAsset public asset;
 
     address public owner;
     address public seller;
@@ -27,124 +27,124 @@ contract AuctionTest is Test {
         AuctionToken(auctionManagement.auctionTokenAddress()).transfer(bidder1, 10000);
         AuctionToken(auctionManagement.auctionTokenAddress()).transfer(bidder2, 10000);
         vm.stopPrank();
-        product = new SampleProduct();
-        product.mint(seller);
+        asset = new SampleAsset();
+        asset.mint(seller);
         vm.stopPrank();
     }
 
-    function testAddValidProduct() public {
+    function testAddValidAsset() public {
         vm.startPrank(seller);
-        product.approve(address(auctionManagement), 0);
-        assert(auctionManagement.addProduct(address(product), 0, 100) == true);
+        asset.approve(address(auctionManagement), 0);
+        assert(auctionManagement.addAsset(address(asset), 0, 100) == true);
 
-        AuctionManagement.Product[] memory addedProducts = auctionManagement.getPendingProducts();
-        assert(addedProducts.length == 1);
-        assert(addedProducts[0].productAddress == address(product));
-        assert(addedProducts[0].productId == 0);
-        assert(auctionManagement.getProductSeller(address(product), 0) == seller);
+        AuctionManagement.Asset[] memory addedAssets = auctionManagement.getPendingAssets();
+        assert(addedAssets.length == 1);
+        assert(addedAssets[0].assetAddress == address(asset));
+        assert(addedAssets[0].assetId == 0);
+        assert(auctionManagement.getAssetSeller(address(asset), 0) == seller);
         vm.stopPrank();
     }
 
-    function testAddInvalidProduct() public {
+    function testAddInvalidAsset() public {
         vm.startPrank(owner);
-        vm.expectRevert("Invalid product address");
-        auctionManagement.addProduct(address(0), 1, 100);
+        vm.expectRevert("Invalid asset address");
+        auctionManagement.addAsset(address(0), 1, 100);
 
-        vm.expectRevert("Not the owner of the product");
-        auctionManagement.addProduct(address(product), 0, 100);
+        vm.expectRevert("Not the owner of the asset");
+        auctionManagement.addAsset(address(asset), 0, 100);
         vm.stopPrank();
 
         vm.startPrank(seller);
-        vm.expectRevert("Product not approved");
-        auctionManagement.addProduct(address(product), 0, 100);
+        vm.expectRevert("Asset not approved");
+        auctionManagement.addAsset(address(asset), 0, 100);
 
-        product.approve(address(auctionManagement), 0);
+        asset.approve(address(auctionManagement), 0);
         vm.warp(auctionManagement.startTime() + auctionManagement.duration() - 1);
         vm.expectRevert("Auction is ongoing");
-        auctionManagement.addProduct(address(product), 0, 100);
+        auctionManagement.addAsset(address(asset), 0, 100);
         vm.stopPrank();
     }
 
-    function testRemoveProduct() public {
+    function testRemoveAsset() public {
         vm.startPrank(seller);
-        product.approve(address(auctionManagement), 0);
-        auctionManagement.addProduct(address(product), 0, 100);
+        asset.approve(address(auctionManagement), 0);
+        auctionManagement.addAsset(address(asset), 0, 100);
 
-        assert(auctionManagement.removeProduct(address(product), 0) == true);
-        AuctionManagement.Product[] memory pendingProducts = auctionManagement.getPendingProducts();
-        assert(pendingProducts.length == 0);
+        assert(auctionManagement.removeAsset(address(asset), 0) == true);
+        AuctionManagement.Asset[] memory pendingAssets = auctionManagement.getPendingAssets();
+        assert(pendingAssets.length == 0);
         vm.stopPrank();
     }
 
-    function testInvalidRemovingProduct() public {
+    function testInvalidRemovingAsset() public {
         vm.startPrank(seller);
-        product.approve(address(auctionManagement), 0);
-        vm.expectRevert("Invalid product address");
-        auctionManagement.removeProduct(address(0), 0);
+        asset.approve(address(auctionManagement), 0);
+        vm.expectRevert("Invalid asset address");
+        auctionManagement.removeAsset(address(0), 0);
 
-        auctionManagement.addProduct(address(product), 0, 100);
+        auctionManagement.addAsset(address(asset), 0, 100);
         uint256 currentTime = block.timestamp;
         vm.warp(auctionManagement.startTime() + auctionManagement.duration() - 1);
         vm.expectRevert("Auction is ongoing");
-        auctionManagement.removeProduct(address(product), 0);
+        auctionManagement.removeAsset(address(asset), 0);
         vm.stopPrank();
 
         vm.startPrank(owner);
         vm.warp(currentTime);
-        vm.expectRevert("Not the seller of the product");
-        auctionManagement.removeProduct(address(product), 0);
+        vm.expectRevert("Not the seller of the asset");
+        auctionManagement.removeAsset(address(asset), 0);
         vm.stopPrank();
     }
 
-    function testVerifyProduct() public {
+    function testVerifyAsset() public {
         vm.startPrank(seller);
-        product.approve(address(auctionManagement), 0);
-        auctionManagement.addProduct(address(product), 0, 100);
+        asset.approve(address(auctionManagement), 0);
+        auctionManagement.addAsset(address(asset), 0, 100);
         vm.stopPrank();
 
         vm.startPrank(owner);
-        assert(auctionManagement.verifyProduct(0) == true);
-        AuctionManagement.Product[] memory verifiedProducts = auctionManagement.getVerifiedProducts();
-        assert(verifiedProducts.length == 1);
-        assert(verifiedProducts[0].productAddress == address(product));
-        assert(verifiedProducts[0].productId == 0);
-        AuctionManagement.Product[] memory pendingProducts = auctionManagement.getPendingProducts();
-        assert(pendingProducts.length == 0);
+        assert(auctionManagement.verifyAsset(0) == true);
+        AuctionManagement.Asset[] memory verifiedAssets = auctionManagement.getVerifiedAssets();
+        assert(verifiedAssets.length == 1);
+        assert(verifiedAssets[0].assetAddress == address(asset));
+        assert(verifiedAssets[0].assetId == 0);
+        AuctionManagement.Asset[] memory pendingAssets = auctionManagement.getPendingAssets();
+        assert(pendingAssets.length == 0);
         vm.stopPrank();
     }
 
-    function testInvalidVerifyingProduct() public {
+    function testInvalidVerifyingAsset() public {
         vm.startPrank(owner);
-        vm.expectRevert("Invalid product index");
-        auctionManagement.verifyProduct(0);
+        vm.expectRevert("Invalid asset index");
+        auctionManagement.verifyAsset(0);
         vm.stopPrank();
 
         vm.startPrank(seller);
-        product.approve(address(auctionManagement), 0);
-        auctionManagement.addProduct(address(product), 0, 100);
+        asset.approve(address(auctionManagement), 0);
+        auctionManagement.addAsset(address(asset), 0, 100);
 
         vm.expectRevert(abi.encodeWithSignature("OwnableUnauthorizedAccount(address)", seller));
-        auctionManagement.verifyProduct(0);
+        auctionManagement.verifyAsset(0);
         vm.stopPrank();
 
         vm.startPrank(owner);
-        assert(auctionManagement.verifyProduct(0) == true);
-        vm.expectRevert("Invalid product index");
-        auctionManagement.verifyProduct(1);
+        assert(auctionManagement.verifyAsset(0) == true);
+        vm.expectRevert("Invalid asset index");
+        auctionManagement.verifyAsset(1);
 
         vm.warp(auctionManagement.startTime() + auctionManagement.duration() - 1);
         vm.expectRevert("Auction is ongoing");
-        auctionManagement.verifyProduct(0);
+        auctionManagement.verifyAsset(0);
         vm.stopPrank();
     }
 
     function testBeginAndCloseAuction() public {
         vm.startPrank(seller);
-        product.approve(address(auctionManagement), 0);
-        auctionManagement.addProduct(address(product), 0, 100);
+        asset.approve(address(auctionManagement), 0);
+        auctionManagement.addAsset(address(asset), 0, 100);
         vm.stopPrank();
         vm.startPrank(owner);
-        auctionManagement.verifyProduct(0);
+        auctionManagement.verifyAsset(0);
         vm.warp(auctionManagement.startTime());
         auctionManagement.beginAuction();
         assert(auctionManagement.lastBidTime() == block.timestamp);
@@ -154,9 +154,9 @@ contract AuctionTest is Test {
         assert(auctionManagement.closeAuction() == true);
         assert(auctionManagement.lastBidTime() == 0);
         assert(auctionManagement.startTime() == startTimeBeforeClose + auctionManagement.elapsedTime());
-        assert(auctionManagement.currentProductIndex() == 0);
-        AuctionManagement.Product[] memory productsAfterClose = auctionManagement.getVerifiedProducts();
-        assert(productsAfterClose.length == 0);
+        assert(auctionManagement.currentAssetIndex() == 0);
+        AuctionManagement.Asset[] memory AssetsAfterClose = auctionManagement.getVerifiedAssets();
+        assert(AssetsAfterClose.length == 0);
         vm.stopPrank();
     }
 
@@ -170,7 +170,7 @@ contract AuctionTest is Test {
         auctionManagement.beginAuction();
 
         vm.warp(auctionManagement.startTime() + auctionManagement.duration() - 1);
-        vm.expectRevert("No products available for bidding");
+        vm.expectRevert("No asset available for bidding");
         auctionManagement.beginAuction();
 
         vm.expectRevert("Auction is ongoing");
@@ -183,12 +183,12 @@ contract AuctionTest is Test {
 
         vm.startPrank(seller);
         vm.warp(auctionManagement.startTime() - 1);
-        product.approve(address(auctionManagement), 0);
-        auctionManagement.addProduct(address(product), 0, 100);
+        asset.approve(address(auctionManagement), 0);
+        auctionManagement.addAsset(address(asset), 0, 100);
 
         vm.stopPrank();
         vm.startPrank(owner);
-        auctionManagement.verifyProduct(0);
+        auctionManagement.verifyAsset(0);
         vm.warp(auctionManagement.startTime());
         auctionManagement.beginAuction();
         vm.expectRevert("Auction has already started");
@@ -198,12 +198,12 @@ contract AuctionTest is Test {
 
     function testBid() public {
         vm.startPrank(seller);
-        product.approve(address(auctionManagement), 0);
-        auctionManagement.addProduct(address(product), 0, 100);
+        asset.approve(address(auctionManagement), 0);
+        auctionManagement.addAsset(address(asset), 0, 100);
         vm.stopPrank();
 
         vm.startPrank(owner);
-        auctionManagement.verifyProduct(0);
+        auctionManagement.verifyAsset(0);
         vm.warp(auctionManagement.startTime());
         auctionManagement.beginAuction();
         vm.stopPrank();
@@ -212,8 +212,8 @@ contract AuctionTest is Test {
         uint256 bidAmount = 100;
         AuctionToken(auctionManagement.auctionTokenAddress()).approve(address(auctionManagement), bidAmount);
         assert(auctionManagement.bid(bidAmount) == true);
-        assert(auctionManagement.getProductPrice(address(product), 0) == bidAmount);
-        assert(auctionManagement.getProductOwner(address(product), 0) == bidder1);
+        assert(auctionManagement.getAssetPrice(address(asset), 0) == bidAmount);
+        assert(auctionManagement.getAssetOwner(address(asset), 0) == bidder1);
         assert(auctionManagement.lastBidTime() == block.timestamp);
         vm.stopPrank();
     }
@@ -232,18 +232,18 @@ contract AuctionTest is Test {
         auctionManagement.bid(bidAmount);
 
         vm.warp(auctionManagement.startTime() + auctionManagement.duration() - 1);
-        vm.expectRevert("No products available for bidding");
+        vm.expectRevert("No asset available for bidding");
         auctionManagement.bid(bidAmount);
         vm.stopPrank();
 
         vm.startPrank(seller);
         vm.warp(auctionManagement.startTime() - 1);
-        product.approve(address(auctionManagement), 0);
-        auctionManagement.addProduct(address(product), 0, 100);
+        asset.approve(address(auctionManagement), 0);
+        auctionManagement.addAsset(address(asset), 0, 100);
         vm.stopPrank();
 
         vm.startPrank(owner);
-        auctionManagement.verifyProduct(0);
+        auctionManagement.verifyAsset(0);
         vm.warp(auctionManagement.startTime());
         auctionManagement.beginAuction();
         vm.stopPrank();
@@ -265,12 +265,12 @@ contract AuctionTest is Test {
 
     function testGavel() public {
         vm.startPrank(seller);
-        product.approve(address(auctionManagement), 0);
-        auctionManagement.addProduct(address(product), 0, 100);
+        asset.approve(address(auctionManagement), 0);
+        auctionManagement.addAsset(address(asset), 0, 100);
         vm.stopPrank();
 
         vm.startPrank(owner);
-        auctionManagement.verifyProduct(0);
+        auctionManagement.verifyAsset(0);
         vm.warp(auctionManagement.startTime());
         auctionManagement.beginAuction();
         vm.stopPrank();
@@ -282,36 +282,36 @@ contract AuctionTest is Test {
 
         vm.warp(block.timestamp + auctionManagement.fairWarningTime());
         assert(auctionManagement.gavel() == true);
-        assert(auctionManagement.currentProductIndex() == 1);
+        assert(auctionManagement.currentAssetIndex() == 1);
         assert(auctionManagement.lastBidTime() == block.timestamp);
-        address expectedOwner = auctionManagement.getProductOwner(address(product), 0);
+        address expectedOwner = auctionManagement.getAssetOwner(address(asset), 0);
         assert(expectedOwner == bidder1);
-        assert(auctionManagement.getProductPrice(address(product), 0) == bidAmount);
-        assert(auctionManagement.getProductSeller(address(product), 0) == seller);
+        assert(auctionManagement.getAssetPrice(address(asset), 0) == bidAmount);
+        assert(auctionManagement.getAssetSeller(address(asset), 0) == seller);
         vm.warp(auctionManagement.startTime() + auctionManagement.duration() + 1);
         auctionManagement.closeAuction();
         vm.stopPrank();
 
         //unsold gavel
         vm.startPrank(owner);
-        product.mint(seller);
+        asset.mint(seller);
         vm.stopPrank();
         vm.startPrank(seller);
         vm.warp(auctionManagement.startTime() - 1);
-        product.approve(address(auctionManagement), 1);
-        auctionManagement.addProduct(address(product), 1, 100);
+        asset.approve(address(auctionManagement), 1);
+        auctionManagement.addAsset(address(asset), 1, 100);
         vm.stopPrank();
         vm.startPrank(owner);
-        auctionManagement.verifyProduct(0);
+        auctionManagement.verifyAsset(0);
         vm.warp(auctionManagement.startTime() + 1);
         auctionManagement.beginAuction();
         vm.warp(block.timestamp + auctionManagement.fairWarningTime());
         assert(auctionManagement.gavel() == true);
         assert(auctionManagement.lastBidTime() == block.timestamp);
-        expectedOwner = auctionManagement.getProductOwner(address(product), 1);
+        expectedOwner = auctionManagement.getAssetOwner(address(asset), 1);
         assert(expectedOwner == address(0));
-        assert(auctionManagement.getProductPrice(address(product), 1) == 0);
-        assert(auctionManagement.getProductSeller(address(product), 1) == seller);
+        assert(auctionManagement.getAssetPrice(address(asset), 1) == 0);
+        assert(auctionManagement.getAssetSeller(address(asset), 1) == seller);
         vm.warp(auctionManagement.startTime() + auctionManagement.duration() + 1);
         auctionManagement.closeAuction();
         vm.stopPrank();
@@ -327,18 +327,18 @@ contract AuctionTest is Test {
         auctionManagement.gavel();
 
         vm.warp(auctionManagement.startTime() + auctionManagement.duration() - 1);
-        vm.expectRevert("No products available for bidding");
+        vm.expectRevert("No asset available for bidding");
         auctionManagement.gavel();
         vm.stopPrank();
 
         vm.startPrank(seller);
         vm.warp(auctionManagement.startTime() - 1);
-        product.approve(address(auctionManagement), 0);
-        auctionManagement.addProduct(address(product), 0, 100);
+        asset.approve(address(auctionManagement), 0);
+        auctionManagement.addAsset(address(asset), 0, 100);
         vm.stopPrank();
 
         vm.startPrank(owner);
-        auctionManagement.verifyProduct(0);
+        auctionManagement.verifyAsset(0);
         vm.warp(auctionManagement.startTime());
         auctionManagement.beginAuction();
         vm.stopPrank();
@@ -356,12 +356,12 @@ contract AuctionTest is Test {
 
     function testClaiming() public {
         vm.startPrank(seller);
-        product.approve(address(auctionManagement), 0);
-        auctionManagement.addProduct(address(product), 0, 100);
+        asset.approve(address(auctionManagement), 0);
+        auctionManagement.addAsset(address(asset), 0, 100);
         vm.stopPrank();
 
         vm.startPrank(owner);
-        auctionManagement.verifyProduct(0);
+        auctionManagement.verifyAsset(0);
         vm.warp(auctionManagement.startTime());
         auctionManagement.beginAuction();
         vm.stopPrank();
@@ -376,33 +376,33 @@ contract AuctionTest is Test {
         vm.warp(auctionManagement.startTime() + auctionManagement.duration());
         auctionManagement.closeAuction();
 
-        assert(auctionManagement.bidderClaim(address(product), 0) == true);
-        address expectedOwner = auctionManagement.getProductOwner(address(product), 0);
+        assert(auctionManagement.bidderClaim(address(asset), 0) == true);
+        address expectedOwner = auctionManagement.getAssetOwner(address(asset), 0);
         assert(expectedOwner == address(0));
-        assert(ERC721(product).ownerOf(0) == bidder1);
+        assert(ERC721(asset).ownerOf(0) == bidder1);
 
-        //seller claim sold product
+        //seller claim sold Asset
         vm.startPrank(seller);
         uint256 sellerBalanceBefore = AuctionToken(auctionManagement.auctionTokenAddress()).balanceOf(seller);
-        assert(auctionManagement.sellerClaim(address(product), 0) == true);
-        address expectedSeller = auctionManagement.getProductSeller(address(product), 0);
+        assert(auctionManagement.sellerClaim(address(asset), 0) == true);
+        address expectedSeller = auctionManagement.getAssetSeller(address(asset), 0);
         assert(expectedSeller == address(0));
         assert(
             AuctionToken(auctionManagement.auctionTokenAddress()).balanceOf(seller) == sellerBalanceBefore + bidAmount
         );
 
-        //seller claim unsold product
+        //seller claim unsold Asset
         vm.startPrank(owner);
-        product.mint(seller);
+        asset.mint(seller);
         vm.stopPrank();
 
         vm.startPrank(seller);
-        product.approve(address(auctionManagement), 1);
-        auctionManagement.addProduct(address(product), 1, 100);
+        asset.approve(address(auctionManagement), 1);
+        auctionManagement.addAsset(address(asset), 1, 100);
         vm.stopPrank();
 
         vm.startPrank(owner);
-        auctionManagement.verifyProduct(0);
+        auctionManagement.verifyAsset(0);
         vm.warp(auctionManagement.startTime());
         auctionManagement.beginAuction();
         vm.warp(block.timestamp + auctionManagement.fairWarningTime());
@@ -413,10 +413,10 @@ contract AuctionTest is Test {
 
         vm.startPrank(seller);
         sellerBalanceBefore = AuctionToken(auctionManagement.auctionTokenAddress()).balanceOf(seller);
-        assert(auctionManagement.sellerClaim(address(product), 1) == true);
-        expectedSeller = auctionManagement.getProductSeller(address(product), 1);
+        assert(auctionManagement.sellerClaim(address(asset), 1) == true);
+        expectedSeller = auctionManagement.getAssetSeller(address(asset), 1);
         assert(expectedSeller == address(0));
-        assert(ERC721(product).ownerOf(1) == seller);
+        assert(ERC721(asset).ownerOf(1) == seller);
         assert(AuctionToken(auctionManagement.auctionTokenAddress()).balanceOf(seller) == sellerBalanceBefore);
         vm.stopPrank();
     }
