@@ -1,10 +1,11 @@
 //SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
+import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import "./AuctionManagement.sol";
 import "./AuctionToken.sol";
 
-contract DAO {
+contract DAO is IERC721Receiver {
     AuctionManagement public auctionManagement;
     AuctionToken public auctionToken;
 
@@ -40,6 +41,15 @@ contract DAO {
         graceTime = _graceTime;
         period = _period;
         quorum = _quorum;
+    }
+
+    function onERC721Received(address operator, address from, uint256 tokenId, bytes calldata data)
+        external
+        pure
+        override
+        returns (bytes4)
+    {
+        return this.onERC721Received.selector;
     }
 
     event BidFailed(string reason);
@@ -104,6 +114,7 @@ contract DAO {
 
     function bid(uint256 proposalId, uint256 price) public isClosedProposal(proposalId) {
         require(isBuyings[proposalId], "Proposal is not for buying");
+        require(yayVotes[proposalId] > nayVotes[proposalId], "Proposal was not approved");
         AuctionManagement.Asset memory asset = assets[proposalId];
         AuctionManagement.Asset memory currentAsset = auctionManagement.getCurrentAsset();
         require(
@@ -114,9 +125,9 @@ contract DAO {
             auctionManagement.getAssetOwner(asset.assetAddress, asset.assetId) != address(this),
             "Asset already owned by DAO"
         );
-        if (price >= auctionManagement.getAssetPrice(currentAsset.assetAddress, currentAsset.assetId)) {
+        if (price <= auctionManagement.getAssetPrice(currentAsset.assetAddress, currentAsset.assetId)) {
             proposalStatus[proposalId] = true;
-            revert("Bid price must be greater than or equal to current price");
+            revert("Bid price must be greater than current price");
         }
         auctionToken.approve(address(auctionManagement), price);
         auctionManagement.bid(price);
@@ -139,6 +150,7 @@ contract DAO {
 
             if (currentOwner != address(this)) {
                 emit BidFailed("Asset is not owned by DAO");
+                revert("Asset is not owned by DAO");
             } else {
                 auctionManagement.bidderClaim(asset.assetAddress, asset.assetId);
             }
