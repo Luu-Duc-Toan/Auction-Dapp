@@ -57,20 +57,14 @@ contract DAOFuzzTest is Test {
         auctionToken = AuctionToken(tokenAddr);
 
         // Deploy DAO
-        dao = new DAO(
-            graceTime,
-            period,
-            quorum,
-            address(auctionManagement),
-            address(auctionToken)
-        );
+        dao = new DAO(graceTime, period, quorum, address(auctionManagement), address(auctionToken));
 
         // Mint tokens to DAO for bidding
         auctionToken.mint(address(dao), 1000000);
 
         // Create sample asset
         sampleAsset = new SampleAsset();
-        
+
         // Mint assets
         sampleAsset.mint(seller); // ID 0 for seller
         sampleAsset.mint(address(dao)); // ID 1 for DAO
@@ -90,7 +84,7 @@ contract DAOFuzzTest is Test {
     function testFuzz_JoinDAO(uint256 amount) public {
         // Bound amount to be non-zero and not exceed member's balance
         amount = bound(amount, 1, 50 ether);
-        
+
         vm.startPrank(member1);
         dao.joinDAO{value: amount}();
         vm.stopPrank();
@@ -99,41 +93,41 @@ contract DAOFuzzTest is Test {
         assertEq(dao.totalShares(), amount);
         assertEq(dao.shares(member1), amount);
     }
-    
+
     // Test quitting DAO with fuzzed initial investment
     function testFuzz_QuitDAO(uint256 amount) public {
         // Bound amount to be reasonable
         amount = bound(amount, 1 ether, 50 ether);
-        
+
         vm.startPrank(member1);
         dao.joinDAO{value: amount}();
-        
+
         uint256 initialBalance = member1.balance;
         dao.quitDAO();
         vm.stopPrank();
-        
+
         // Verify member got back their ETH
         assertEq(dao.treasury(), 0);
         assertEq(dao.totalShares(), 0);
         assertEq(dao.shares(member1), 0);
         assertEq(member1.balance, initialBalance + amount);
     }
-    
+
     // Test proposal creation with different share distributions
     function testFuzz_CreateProposal(uint256 member1Shares, uint256 member2Shares) public {
         // Bound shares to reasonable values
         member1Shares = bound(member1Shares, 1 ether, 40 ether);
         member2Shares = bound(member2Shares, 1 ether, 40 ether);
-        
+
         vm.prank(member1);
         dao.joinDAO{value: member1Shares}();
-        
+
         vm.prank(member2);
         dao.joinDAO{value: member2Shares}();
-        
+
         uint256 totalShares = member1Shares + member2Shares;
         uint256 quorumShares = (totalShares * quorum) / 100;
-        
+
         // Create proposal from member that has enough shares
         if (member1Shares >= quorumShares) {
             vm.prank(member1);
@@ -145,24 +139,24 @@ contract DAOFuzzTest is Test {
             assertEq(dao.totalProposals(), 1);
         }
     }
-    
+
     // Test voting with different share weights
     function testFuzz_Voting(uint256 member1Shares, uint256 member2Shares, bool member1VoteYay) public {
         // Bound shares to reasonable values
         member1Shares = bound(member1Shares, 1 ether, 40 ether);
         member2Shares = bound(member2Shares, 1 ether, 40 ether);
-        
+
         // Setup members
         vm.prank(member1);
         dao.joinDAO{value: member1Shares}();
-        
+
         vm.prank(member2);
         dao.joinDAO{value: member2Shares}();
-        
+
         // Create proposal
         uint256 totalShares = member1Shares + member2Shares;
         uint256 quorumShares = (totalShares * quorum) / 100;
-        
+
         // Only create proposal if one member has enough shares
         if (member1Shares >= quorumShares || member2Shares >= quorumShares) {
             if (member1Shares >= quorumShares) {
@@ -172,15 +166,15 @@ contract DAOFuzzTest is Test {
                 vm.prank(member2);
                 dao.createProposal(address(sampleAsset), 0, true, 500);
             }
-            
+
             // Member 1 votes
             vm.prank(member1);
             dao.vote(0, member1VoteYay);
-            
+
             // Member 2 always votes yay
             vm.prank(member2);
             dao.vote(0, true);
-            
+
             // Check vote tallies
             if (member1VoteYay) {
                 assertEq(dao.yayVotes(0), member1Shares + member2Shares);
