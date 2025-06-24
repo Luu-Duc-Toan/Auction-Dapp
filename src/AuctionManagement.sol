@@ -8,7 +8,6 @@ import "forge-std/console.sol";
 
 //How to check whether the product is a ERC721 token? (valid product)
 //add lending function
-//return token for lastBidder after new Bidder bid successfully
 contract AuctionManagement is Ownable {
     struct Asset {
         address assetAddress;
@@ -123,7 +122,6 @@ contract AuctionManagement is Ownable {
         return true;
     }
 
-    //return token for lastBidder
     function bid(uint256 amount) external inAuction returns (bool) {
         bytes32 assetHash =
             getAssetHash(verifiedAssets[currentAssetIndex].assetAddress, verifiedAssets[currentAssetIndex].assetId);
@@ -131,6 +129,9 @@ contract AuctionManagement is Ownable {
         require(AuctionToken(auctionTokenAddress).balanceOf(msg.sender) >= amount, "Insufficient balance");
         require(AuctionToken(auctionTokenAddress).allowance(msg.sender, address(this)) >= amount, "Allowance too low");
         AuctionToken(auctionTokenAddress).transferFrom(msg.sender, address(this), amount);
+        if (owners[assetHash] != address(0)) {
+            AuctionToken(auctionTokenAddress).transfer(owners[assetHash], prices[assetHash]);
+        }
         prices[assetHash] = amount;
         owners[assetHash] = msg.sender;
         lastBidTime = block.timestamp;

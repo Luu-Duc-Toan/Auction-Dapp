@@ -163,6 +163,7 @@ contract AuctionManagementTest is Test {
         vm.stopPrank();
 
         // Verify bid
+        assertEq(auctionToken.balanceOf(bidder1), 850);
         assertEq(auctionManagement.getAssetOwner(address(sampleAsset), tokenId), bidder1);
         assertEq(auctionManagement.getAssetPrice(address(sampleAsset), tokenId), 150);
 
@@ -173,6 +174,8 @@ contract AuctionManagementTest is Test {
         vm.stopPrank();
 
         // Verify new bid
+        assertEq(auctionToken.balanceOf(bidder1), 1000);
+        assertEq(auctionToken.balanceOf(bidder2), 1800);
         assertEq(auctionManagement.getAssetOwner(address(sampleAsset), tokenId), bidder2);
         assertEq(auctionManagement.getAssetPrice(address(sampleAsset), tokenId), 200);
 
