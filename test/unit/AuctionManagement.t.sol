@@ -114,7 +114,7 @@ contract AuctionManagementTest is Test {
         vm.stopPrank();
 
         assertTrue(success);
-
+        assertEq(sampleAsset.ownerOf(tokenId), seller);
         // Check that asset data is removed
         assertEq(auctionManagement.getAssetSeller(address(sampleAsset), tokenId), address(0));
         assertEq(auctionManagement.getAssetPrice(address(sampleAsset), tokenId), 0);

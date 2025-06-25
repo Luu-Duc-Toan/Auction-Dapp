@@ -81,6 +81,7 @@ contract AuctionManagement is Ownable {
         require(sellers[assetHash] == msg.sender, "Not the seller of the asset");
         for (uint256 i = 0; i < pendingAssets.length; ++i) {
             if (pendingAssets[i].assetAddress != asset || pendingAssets[i].assetId != id) continue;
+            ERC721(asset).safeTransferFrom(address(this), msg.sender, id);
             pendingAssets[i] = pendingAssets[pendingAssets.length - 1];
             pendingAssets.pop();
             delete sellers[assetHash];
@@ -89,6 +90,7 @@ contract AuctionManagement is Ownable {
         }
         for (uint256 i = 0; i < verifiedAssets.length; ++i) {
             if (verifiedAssets[i].assetAddress != asset || verifiedAssets[i].assetId != id) continue;
+            ERC721(asset).safeTransferFrom(address(this), msg.sender, id);
             verifiedAssets[i] = verifiedAssets[verifiedAssets.length - 1];
             verifiedAssets.pop();
             delete sellers[assetHash];
